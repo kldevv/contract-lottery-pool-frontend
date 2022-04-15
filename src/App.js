@@ -1,34 +1,36 @@
 import React from "react";
 import web3 from "./web3";
 import lottery from "./lottery";
+import "./App.css";
 
 class App extends React.Component {
     state = {
-        admin: "{Failed to get contract owner}",
-        players: [],
+        admin: "",
         balance: "",
+        players: [],
+        minBuyin: 0,
         value: "",
         message: "",
     };
 
     async componentDidMount() {
         const admin = await lottery.methods.admin().call();
-        const players = await lottery.methods.getPlayers().call();
+        const players = await lottery.methods.getTickets().call();
         const balance = await web3.eth.getBalance(lottery.options.address);
+        const minBuyin = await lottery.methods.minPayin().call();
 
-        this.setState({ admin, players, balance });
+        this.setState({ admin, balance, players, minBuyin });
     }
 
     onSubmit = async (event) => {
         event.preventDefault();
 
         const accounts = await web3.eth.getAccounts();
-
-        this.setState({ message: "Waiting on transaction success..." });
-
+        
+        this.setState({ message: "Waiting on transaction..." });
         await lottery.methods.enter().send({
-            from: accounts[0],
             value: web3.utils.toWei(this.state.value, "ether"),
+            from: accounts[0],
         });
 
         this.setState({ message: "You have been entered!" });
@@ -37,9 +39,8 @@ class App extends React.Component {
     onClick = async () => {
         const accounts = await web3.eth.getAccounts();
 
-        this.setState({ message: "Waiting on transaction success..." });
-
-        await lottery.methods.pickWinner().send({
+        this.setState({ message: "Waiting on transaction..." });
+        await lottery.methods.draw().send({
             from: accounts[0],
         });
 
@@ -48,35 +49,35 @@ class App extends React.Component {
 
     render() {
         return (
-            <div>
-                <h2>Lottery Contract</h2>
+            <div className="App">
+                <h1>A Lottery Pool Contract</h1>
                 <p>
-                    This contract is managed by {this.state.admin}. There are currently{" "}
-                    {this.state.players.length} people entered, competing to win{" "}
-                    {web3.utils.fromWei(this.state.balance, "ether")} ether!
+                    This contract is created and managed by <code>{this.state.admin}</code> on Ropsten Network. <br />
+                    The winning price is {web3.utils.fromWei(this.state.balance, "ether")} ether <br />
+                    There are {this.state.players.length} tickets in the pool. The chance of winning the price if you enter now is {1 / (this.state.players.length + 1)}.
                 </p>
-
-                <hr />
+                <hr className="Line"/>
                 <form onSubmit={this.onSubmit}>
-                    <h4>Want to try your luck?</h4>
+                    <h4>Enter the Pool</h4>
                     <div>
-                        <label>Amount of ether to enter</label>
+                        <label>Amount of ether to enter. (The minimum amount is {web3.utils.fromWei(String(this.state.minBuyin), "ether")} ether). <br /> <br /></label>
                         <input
                             value={this.state.value}
                             onChange={(event) => this.setState({ value: event.target.value })}
                         />
                     </div>
-                    <button>Enter</button>
+                    <button className="Button">Enter</button>
                 </form>
 
-                <hr />
+                <hr className="Line"/>
 
-                <h4>Ready to pick a winner?</h4>
-                <button onClick={this.onClick}>Pick a winner!</button>
+                <h4>Draw the winner</h4>
+                <p>Only the owner of the contract can pick the winner. Otherwise will result in an undefined error.</p>
+                <button onClick={this.onClick} className="Button">Draw</button>
 
-                <hr />
+                <hr className="Line"/>
 
-                <h1>{this.state.message}</h1>
+                <p>{this.state.message}</p>
             </div>
         );
     }
